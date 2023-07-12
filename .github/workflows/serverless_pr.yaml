@@ -1,0 +1,57 @@
+name: Serverless PR
+on:
+  pull_request:
+    branches:
+      # This is the name of the primary branch, which may be `main` for newer repos.
+      - master
+
+env:
+  # Update this to the location of your log root directory if different:
+  LOG_ROOT: "log"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    name: Serverless PR handler
+    outputs:
+      # Add extra outputs to correspond to any additions to the matched patterns in the filter step below.
+      log_pending: ${{ steps.filter.outputs.log_pending }}
+    steps:
+      - name: Check for log structure PRs
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          list-files: shell
+          filters: |
+            log_pending:
+              - added: '${{ env.LOG_ROOT }}/leaves/pending/*'
+            log_private:
+              - '${{ env.LOG_ROOT }}/!(leaves/pending/*)'
+
+      - name: Detect log structure changes
+        if: steps.filter.outputs.log_private == 'true'
+        run: |
+          for i in ${{ steps.filter.outputs.log_private_files }}; do
+            echo "::error file=${i}::Modified protected log structure"
+          done
+          exit 1
+
+# This job does a more detailed check on the contents of any pending leaves added.
+# We only run this if we've detected that this PR is an "add leaf" PR.
+  leaf_validator_job:
+    needs: changes
+    if: ${{ needs.changes.outputs.log_pending == 'true' }}
+    runs-on: ubuntu-latest
+    name: Validate pending leaves
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: "refs/pull/${{ github.event.number }}/merge"
+      # In reality, this step does very minimal validation, but this is where you'd add your
+      # own validator action specific to the type of contents your log should contain.
+      - name: Leaf validator step
+        id: leaf_validator
+        uses: google/trillian-examples/serverless/deploy/github/log/leaf_validator@HEAD
+        with:
+          log_dir: '${{ env.LOG_ROOT }}'
