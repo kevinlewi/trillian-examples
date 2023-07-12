@@ -11,7 +11,7 @@ jobs:
       uses: google/trillian-examples/serverless/deploy/github/log/sequence_and_integrate@master
       with:
         log_dir: './log'
-        origin: '<Log identifier>'
+        origin: 'klewi_test'
       env:
         SERVERLESS_LOG_PRIVATE_KEY: ${{ secrets.SERVERLESS_LOG_PRIVATE_KEY }}
         SERVERLESS_LOG_PUBLIC_KEY: ${{ secrets.SERVERLESS_LOG_PUBLIC_KEY }}
